@@ -1179,6 +1179,30 @@ def test_missing_envvar(runner):
     assert result.exit_code == 2
     assert "Error: Missing option '--foo'." in result.output
 
+    result = runner.invoke(cli, auto_envvar_prefix="TEST")
+    assert result.exit_code == 2
+    assert "Error: Missing option '--foo' (env var: 'TEST_FOO')." in result.output
+
+    # Invalid value error hint also includes the auto envvar
+    cli_type = click.Command(
+        "cli",
+        params=[
+            click.Option(
+                ["--port"],
+                type=int,
+                show_envvar=True,
+            )
+        ],
+    )
+    result = runner.invoke(
+        cli_type, ["--port", "not-an-int"], auto_envvar_prefix="TEST"
+    )
+    assert result.exit_code == 2
+    assert (
+        "Error: Invalid value for '--port' (env var: 'TEST_PORT'): "
+        "'not-an-int' is not a valid integer." in result.output
+    )
+
 
 @pytest.mark.parametrize(
     ("envvar", "expected"),
