@@ -1180,6 +1180,53 @@ def test_missing_envvar(runner):
     assert "Error: Missing option '--foo'." in result.output
 
 
+def test_show_envvar_auto_prefix_in_error(runner):
+    """When show_envvar=True and auto_envvar_prefix is set, the resolved envvar
+    is included in error hints."""
+    cli = click.Command(
+        "cli",
+        params=[click.Option(["--foo"], show_envvar=True, required=True)],
+        context_settings={"auto_envvar_prefix": "TEST"},
+    )
+    result = runner.invoke(cli)
+    assert result.exit_code == 2
+    assert "Error: Missing option '--foo' (env var: 'TEST_FOO')." in result.output
+
+    # When allow_from_autoenv=False, auto prefix is not included
+    cli_disabled = click.Command(
+        "cli",
+        params=[
+            click.Option(
+                ["--foo"],
+                show_envvar=True,
+                required=True,
+                allow_from_autoenv=False,
+            )
+        ],
+        context_settings={"auto_envvar_prefix": "TEST"},
+    )
+    result = runner.invoke(cli_disabled)
+    assert result.exit_code == 2
+    assert "Error: Missing option '--foo'." in result.output
+
+    # Explicit envvar takes precedence over auto prefix
+    cli_explicit = click.Command(
+        "cli",
+        params=[
+            click.Option(
+                ["--foo"],
+                envvar="CUSTOM_VAR",
+                show_envvar=True,
+                required=True,
+            )
+        ],
+        context_settings={"auto_envvar_prefix": "TEST"},
+    )
+    result = runner.invoke(cli_explicit)
+    assert result.exit_code == 2
+    assert "Error: Missing option '--foo' (env var: 'CUSTOM_VAR')." in result.output
+
+
 @pytest.mark.parametrize(
     ("envvar", "expected"),
     [
